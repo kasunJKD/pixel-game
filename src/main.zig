@@ -1,16 +1,15 @@
 const std = @import("std");
-
 const rl = @import("raylib");
 const Texture2D = rl.Texture2D;
 const Vec2 = rl.Vector2;
 
-//main states
+// Main states
 const State = enum {
     EDITOR,
     GAME,
 };
 
-//game states
+// Game states
 const GameState = enum {
     PAUSE,
     PLAY,
@@ -20,14 +19,8 @@ const Camera2D = rl.Camera2D;
 
 fn initCamera() Camera2D {
     return Camera2D{
-        .offset = Vec2{
-            .x = 320,
-            .y = 180,
-        }, // Center of the screen
-        .target = Vec2{
-            .x = 320,
-            .y = 180,
-        }, // Initial target position
+        .offset = Vec2{ .x = 320, .y = 180 }, // Center of the screen
+        .target = Vec2{ .x = 320, .y = 180 }, // Initial target position
         .rotation = 0,
         .zoom = 1,
     };
@@ -91,10 +84,12 @@ pub fn main() anyerror!void {
     // Initialization
     //--------------------------------------------------------------------------------------
     var currentGlobalState = State.GAME;
-    //const currentGameState = GameState.PLAY;
+    // const currentGameState = GameState.PLAY;
 
-    const screenWidth = 640;
-    const screenHeight = 360;
+    const screenWidth = 1280;
+    const screenHeight = 720;
+    const gameWidth = 640;
+    const gameHeight = 360;
 
     var camera = initCamera();
 
@@ -105,55 +100,53 @@ pub fn main() anyerror!void {
 
     rl.setTargetFPS(60);
 
-    //const player = rl.loadTexture("assets/game_player.png");
-    //defer player.unload();
+    // const player = rl.loadTexture("assets/game_player.png");
+    // defer player.unload();
 
     // const position = Vec2.init(
     //     @as(f32, @floatFromInt(@divTrunc((screenWidth - player.width), 2))),
     //     @as(f32, @floatFromInt(@divTrunc((screenHeight - player.height), 2))),
     // );
+    const target = rl.loadRenderTexture(gameWidth, gameHeight);
+    defer rl.unloadRenderTexture(target);
 
     while (!rl.windowShouldClose()) {
         updateCamera(&camera, playerPos, currentGlobalState);
 
         // Toggle between windowed and full-screen mode
         if (rl.isKeyPressed(.key_f)) {
-            if (rl.isWindowFullscreen()) {
-                rl.toggleFullscreen();
-                rl.setWindowSize(640, 360);
-            } else {
-                rl.toggleFullscreen();
-                // Update camera offset for fullscreen
-                const screenWidthr = rl.getScreenWidth();
-                const screenHeightr = rl.getScreenHeight();
-                camera.offset = Vec2{
-                    .x = @as(f32, @floatFromInt(@divTrunc((screenWidthr), 2))),
-                    .y = @as(f32, @floatFromInt(@divTrunc((screenHeightr), 2))),
-                };
-            }
+            rl.toggleFullscreen();
         }
 
         if (rl.isKeyPressed(rl.KeyboardKey.key_space)) {
             currentGlobalState = if (currentGlobalState == State.EDITOR) State.GAME else State.EDITOR;
         }
 
-        rl.beginDrawing();
-        rl.clearBackground(rl.Color.white);
-        defer rl.endDrawing();
+        // Begin drawing to the render texture
+        rl.beginTextureMode(target);
+        rl.clearBackground(rl.Color.black);
 
-        //rl.drawTextureV(player, position, rl.Color.white);
-
+        // 2D mode drawing with camera
         rl.beginMode2D(camera);
-        // Draw map and player or editor elements
         rl.drawRectangle(0, 0, 1920, 1080, rl.Color.light_gray); // Example map
         rl.drawRectangle(playerPos.x - 16, playerPos.y - 16, 32, 32, rl.Color.blue); // Example player
-
-        // Draw the grid chunks
         drawChunks();
-
         rl.endMode2D();
+
+        rl.endTextureMode();
+
+        // Begin drawing to the window
+        rl.beginDrawing();
+        rl.clearBackground(rl.Color.white);
+        rl.drawTexturePro(target.texture, rl.Rectangle{ .x = 0, .y = 0, .width = @floatFromInt(target.texture.width), .height = @floatFromInt(-target.texture.height) }, // source
+            rl.Rectangle{ .x = 0, .y = 0, .width = @floatFromInt(screenWidth), .height = @floatFromInt(screenHeight) }, // destination
+            Vec2{ .x = 0, .y = 0 }, // origin
+            0.0, // rotation
+            rl.Color.white // tint
+        );
 
         rl.drawText(if (currentGlobalState == State.EDITOR) "Editor Mode" else "Game Mode", 10, 10, 20, rl.Color.black);
         rl.drawText("Press SPACE to toggle mode", 10, 40, 20, rl.Color.dark_gray);
+        rl.endDrawing();
     }
 }

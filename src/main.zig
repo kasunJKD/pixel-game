@@ -13,6 +13,7 @@ const State = enum {
 const GameState = enum {
     PAUSE,
     PLAY,
+    DEATH,
 };
 
 const Camera2D = rl.Camera2D;
@@ -25,6 +26,8 @@ fn initCamera() Camera2D {
         .zoom = 1,
     };
 }
+
+const PlayerMoveSpeed = 10.0;
 
 fn updateCamera(camera: *Camera2D, playerPos: Vec2, mainState: State) void {
     switch (mainState) {
@@ -63,6 +66,7 @@ fn updateCamera(camera: *Camera2D, playerPos: Vec2, mainState: State) void {
     }
 }
 
+//debug
 fn drawChunks() void {
     const chunkWidth: i32 = 640;
     const chunkHeight: i32 = 360;
@@ -80,6 +84,18 @@ fn drawChunks() void {
     }
 }
 
+pub fn playerMovement(playerPOS: *Vec2, state: State) void {
+    if (rl.isKeyDown(rl.KeyboardKey.key_w) and state == State.GAME) {
+        playerPOS.*.y -= PlayerMoveSpeed;
+    } else if (rl.isKeyDown(rl.KeyboardKey.key_s) and state == State.GAME) {
+        playerPOS.*.y += PlayerMoveSpeed;
+    } else if (rl.isKeyDown(rl.KeyboardKey.key_a) and state == State.GAME) {
+        playerPOS.*.x -= PlayerMoveSpeed;
+    } else if (rl.isKeyDown(rl.KeyboardKey.key_d) and state == State.GAME) {
+        playerPOS.*.x += PlayerMoveSpeed;
+    }
+}
+
 pub fn main() anyerror!void {
     // Initialization
     //--------------------------------------------------------------------------------------
@@ -93,7 +109,7 @@ pub fn main() anyerror!void {
 
     var camera = initCamera();
 
-    const playerPos = Vec2{ .x = 320, .y = 180 };
+    var playerPos = Vec2{ .x = 320, .y = 180 };
 
     rl.initWindow(screenWidth, screenHeight, "pixel template");
     defer rl.closeWindow();
@@ -129,20 +145,24 @@ pub fn main() anyerror!void {
         // 2D mode drawing with camera
         rl.beginMode2D(camera);
         rl.drawRectangle(0, 0, 1920, 1080, rl.Color.light_gray); // Example map
-        rl.drawRectangle(playerPos.x - 16, playerPos.y - 16, 32, 32, rl.Color.blue); // Example player
+        rl.drawRectangleV(Vec2.init(playerPos.x - 16.0, playerPos.y - 16.0), Vec2.init(32, 32), rl.Color.blue); // Example player
+
+        playerMovement(&playerPos, currentGlobalState);
+
+        //debug line
         drawChunks();
+
         rl.endMode2D();
 
         rl.endTextureMode();
 
         // Begin drawing to the window
         rl.beginDrawing();
-        rl.clearBackground(rl.Color.white);
         rl.drawTexturePro(target.texture, rl.Rectangle{ .x = 0, .y = 0, .width = @floatFromInt(target.texture.width), .height = @floatFromInt(-target.texture.height) }, // source
             rl.Rectangle{ .x = 0, .y = 0, .width = @floatFromInt(screenWidth), .height = @floatFromInt(screenHeight) }, // destination
             Vec2{ .x = 0, .y = 0 }, // origin
             0.0, // rotation
-            rl.Color.white // tint
+            rl.Color.sky_blue // tint
         );
 
         rl.drawText(if (currentGlobalState == State.EDITOR) "Editor Mode" else "Game Mode", 10, 10, 20, rl.Color.black);
